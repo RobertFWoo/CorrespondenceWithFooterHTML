@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correspondence with Footer</title>
+    <style>
+        body {
+            background-color: #4d6a5f;
+            font-family: "Georgia", sans-serif;
+            color: #F9EFD5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #4d6a5f;
+            border-radius: 10px;
+        }
+        .label, .status-bar {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .text-area, .footer-area {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            box-sizing: border-box;
+            border: 2px solid #F9EFD5;
+            border-radius: 5px;
+        }
+        .text-area {
+            height: 200px; /* Double the height */
+        }
+        .footer-area {
+            height: 100px;
+        }
+        .button {
+            background-color: #F9EFD5;
+            color: #4d6a5f;
+            font-size: 14px; /* Smaller font size */
+            font-weight: bold;
+            padding: 8px 16px; /* Smaller padding */
+            border: none;
+            cursor: pointer;
+            margin-right: 5px; /* Spaced apart */
+            border-radius: 5px;
+        }
+        .button:hover {
+            background-color: #e3d4b5;
+        }
+        .spacer {
+            height: 20px; /* Spacer between buttons and footer text box */
+        }
+        .status-bar {
+            background-color: #F9EFD5;
+            color: #4d6a5f;
+            padding: 10px;
+            margin-top: 20px;
+            text-align: left;
+            border-radius: 5px;
+        }
+        .list-container {
+            margin-top: 20px;
+        }
+        .listbox {
+            width: 100%;
+            height: 150px;
+            border: 2px solid #F9EFD5;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Correspondence with Footer</h1>
+        <textarea id="textBox" class="text-area" placeholder="Type your text here..."></textarea>
+        <button id="saveTextButton" class="button">Save Text</button>
+        <button id="copyButton" class="button">Copy text with footer</button>
+        <button id="clearButton" class="button">Clear contents of text box</button>
+        <div class="spacer"></div>
+        <textarea id="footerBox" class="footer-area" placeholder="Type your footer here..."></textarea>
+        <select id="footerType" class="button">
+            <option value="testimony">Testimony Footer</option>
+            <option value="florida">Florida Footer</option>
+        </select>
+        <button id="saveFooterButton" class="button">Save Footer</button>
+        <button id="restoreFooterButton" class="button">Restore Default Footer</button>
+        <div class="spacer"></div>
+        <div class="list-container">
+            <select id="textList" class="listbox" size="6"></select>
+            <button id="deleteTextButton" class="button">Delete Selected Text</button>
+            <button id="retrieveTextButton" class="button">Retrieve Selected Text</button>
+        </div>
+        <div id="statusBar" class="status-bar"></div>
+    </div>
+
+    <script>
+        const defaultFooters = {
+            testimony: "If you have been blessed by the Most-High through Sabbath Keepers Fellowship, please include a short 1 to 2 paragraph testimonial to that effect for use on our website and other outreaches we have to the people who support us. They care and want to see you to know how their efforts are used. Thank you, from us and all of them.",
+            florida: "Thank you for your support and contributions. Your feedback and testimonials help us improve our services and reach more people. We appreciate your time and effort in providing us with valuable insights."
+        };
+
+        let currentFooterType = "testimony";
+
+        // Function to copy text to clipboard with appended footer
+        function copyTextWithFooter() {
+            const textBox = document.getElementById('textBox');
+            const text = textBox.value;
+            const footerBox = document.getElementById('footerBox');
+            const footer = footerBox.value;
+            const textWithFooter = text + '\n\n--\n' + footer;
+            const tempElement = document.createElement('textarea');
+            tempElement.value = textWithFooter;
+            document.body.appendChild(tempElement);
+            tempElement.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempElement);
+            updateStatusBar("Text copied to clipboard with footer!");
+        }
+
+        // Function to clear the contents of the text box
+        function clearTextBox() {
+            const textBox = document.getElementById('textBox');
+            textBox.value = '';
+            updateStatusBar("Text box cleared");
+        }
+
+        // Function to save the footer text to a file
+        async function saveFooter() {
+            const footerBox = document.getElementById('footerBox');
+            const footer = footerBox.value;
+            await fetch('save_footer.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ footer, type: currentFooterType })
+            });
+            updateStatusBar(`Footer updated: ${currentFooterType}`);
+        }
+
+        // Function to load the saved footer text
+        async function loadFooter() {
+            const response = await fetch('load_footer.php');
+            const data = await response.json();
+            const footerBox = document.getElementById('footerBox');
+            footerBox.value = data[currentFooterType] || defaultFooters[currentFooterType];
+        }
+
+        // Function to restore the default footer text
+        function restoreDefaultFooter() {
+            const footerBox = document.getElementById('footerBox');
+            footerBox.value = defaultFooters[currentFooterType];
+            updateStatusBar(`${currentFooterType.charAt(0).toUpperCase() + currentFooterType.slice(1)} Footer text restored`);
+        }
+
+        // Function to update the status bar
+        function updateStatusBar(message) {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.textContent = message;
+        }
+
+        // Function to save the text with timestamp
+        function saveText() {
+            const textBox = document.getElementById('textBox');
+            const text = textBox.value;
+            const timestamp = new Date().toISOString();
+            const preview = text.split(' ').slice(0, 5).join(' ');
+            const entry = { timestamp, preview, text };
+            let storedTexts = JSON.parse(localStorage.getItem('storedTexts')) || [];
+            storedTexts.push(entry);
+            localStorage.setItem('storedTexts', JSON.stringify(storedTexts));
+            loadTextList();
+            updateStatusBar("Text saved");
+        }
+
+        // Function to load the list of saved texts
+        function loadTextList() {
+            const textList = document.getElementById('textList');
+            textList.innerHTML = '';
+            let storedTexts = JSON.parse(localStorage.getItem('storedTexts')) || [];
+            storedTexts.forEach((entry, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.text = `${entry.timestamp}: ${entry.preview}`;
+                textList.add(option);
+            });
+        }
+
+        // Function to delete the selected text
+        function deleteText() {
+            const textList = document.getElementById('textList');
+            const selectedIndex = textList.selectedIndex;
+            if (selectedIndex !== -1) {
+                let storedTexts = JSON.parse(localStorage.getItem('storedTexts')) || [];
+                storedTexts.splice(selectedIndex, 1);
+                localStorage.setItem('storedTexts', JSON.stringify(storedTexts));
+                loadTextList();
+                updateStatusBar("Selected text deleted");
+            } else {
+                updateStatusBar("No text selected for deletion");
+            }
+        }
+
+        // Function to retrieve the selected text
+        function retrieveText() {
+            const textList = document.getElementById('textList');
+            const selectedIndex = textList.selectedIndex;
+            if (selectedIndex !== -1) {
+                let storedTexts = JSON.parse(localStorage.getItem('storedTexts')) || [];
+                const entry = storedTexts[selectedIndex];
+                const textBox = document.getElementById('textBox');
+                textBox.value = entry.text;
+                updateStatusBar("Selected text retrieved");
+            } else {
+                updateStatusBar("No text selected for retrieval");
+            }
+        }
+
+        // Add event listeners to the buttons and dropdown
+        document.getElementById('saveTextButton').addEventListener('click', saveText);
+        document.getElementById('copyButton').addEventListener('click', copyTextWithFooter);
+        document.getElementById('clearButton').addEventListener('click', clearTextBox);
+        document.getElementById('saveFooterButton').addEventListener('click', saveFooter);
+        document.getElementById('restoreFooterButton').addEventListener('click', restoreDefaultFooter);
+        document.getElementById('deleteTextButton').addEventListener('click', deleteText);
+        document.getElementById('retrieveTextButton').addEventListener('click', retrieveText);
+        document.getElementById('footerType').addEventListener('change', (event) => {
+            currentFooterType = event.target.value;
+            loadFooter();
+        });
+
+        // Load the saved footer and text list when the page loads
+        window.onload = () => {
+            loadFooter();
+            loadTextList();
+        };
+    </script>
+</body>
+</html>
